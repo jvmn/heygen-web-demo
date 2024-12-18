@@ -314,7 +314,7 @@ export default function InteractiveAvatar() {
           )}
         </CardBody>
         <Divider />
-        <CardFooter className="flex flex-col gap-3 relative">
+        <CardFooter className="flex flex-col gap-4 relative">
           <Tabs
             aria-label="Options"
             selectedKey={chatMode}
@@ -326,7 +326,7 @@ export default function InteractiveAvatar() {
             <Tab key="voice_mode" title="Voice mode" />
           </Tabs>
           {chatMode === "text_mode" ? (
-            <div className="w-full flex relative">
+            <div className="w-full flex relative gap-1">
               <InteractiveAvatarTextInput
                 disabled={!stream}
                 input={text}
