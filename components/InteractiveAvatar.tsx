@@ -2,28 +2,32 @@ import type { StartAvatarResponse } from "@heygen/streaming-avatar";
 
 import StreamingAvatar, {
   AvatarQuality,
-  StreamingEvents, TaskMode, TaskType, VoiceEmotion,
+  StreamingEvents,
+  TaskMode,
+  TaskType,
+  VoiceEmotion,
 } from "@heygen/streaming-avatar";
 import {
   Button,
   Card,
   CardBody,
   CardFooter,
+  Chip,
   Divider,
   Input,
   Select,
   SelectItem,
   Spinner,
-  Chip,
-  Tabs,
   Tab,
+  Tabs,
 } from "@nextui-org/react";
-import { useEffect, useRef, useState } from "react";
 import { useMemoizedFn, usePrevious } from "ahooks";
+import { useChat } from "ai/react";
+import { useEffect, useRef, useState } from "react";
 
 import InteractiveAvatarTextInput from "./InteractiveAvatarTextInput";
 
-import {AVATARS, STT_LANGUAGE_LIST} from "@/app/lib/constants";
+import { AVATARS, STT_LANGUAGE_LIST } from "@/app/lib/constants";
 
 export default function InteractiveAvatar() {
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -32,7 +36,7 @@ export default function InteractiveAvatar() {
   const [debug, setDebug] = useState<string>();
   const [knowledgeId, setKnowledgeId] = useState<string>("");
   const [avatarId, setAvatarId] = useState<string>("");
-  const [language, setLanguage] = useState<string>('en');
+  const [language, setLanguage] = useState<string>("en");
 
   const [data, setData] = useState<StartAvatarResponse>();
   const [text, setText] = useState<string>("");
@@ -40,6 +44,35 @@ export default function InteractiveAvatar() {
   const avatar = useRef<StreamingAvatar | null>(null);
   const [chatMode, setChatMode] = useState("text_mode");
   const [isUserTalking, setIsUserTalking] = useState(false);
+
+  const {
+    input: gtpInput,
+    setInput: setGptInput,
+    handleSubmit: handleGptSubmit,
+  } = useChat({
+    onFinish: async (message) => {
+      // eslint-disable-next-line no-console
+      console.log("ChatGPT Response:", message);
+
+      if (!avatar.current) {
+        setDebug("Avatar API not initialized");
+
+        return;
+      }
+
+      //send the ChatGPT response to the Interactive Avatar
+      await avatar.current.speak({ text: message.content }).catch((e) => {
+        setDebug(e.message);
+      });
+    },
+    initialMessages: [
+      {
+        id: "1",
+        role: "system",
+        content: "You are a helpful assistant.",
+      },
+    ],
+  });
 
   async function fetchAccessToken() {
     try {
@@ -103,7 +136,7 @@ export default function InteractiveAvatar() {
       setData(res);
       // default to voice mode
       await avatar.current?.startVoiceChat({
-        useSilencePrompt: false
+        useSilencePrompt: false,
       });
       setChatMode("voice_mode");
     } catch (error) {
@@ -120,9 +153,11 @@ export default function InteractiveAvatar() {
       return;
     }
     // speak({ text: text, task_type: TaskType.REPEAT })
-    await avatar.current.speak({ text: text, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC }).catch((e) => {
-      setDebug(e.message);
-    });
+    await avatar.current
+      .speak({ text: text, taskType: TaskType.REPEAT, taskMode: TaskMode.SYNC })
+      .catch((e) => {
+        setDebug(e.message);
+      });
     setIsLoadingRepeat(false);
   }
   async function handleInterrupt() {
@@ -131,11 +166,9 @@ export default function InteractiveAvatar() {
 
       return;
     }
-    await avatar.current
-      .interrupt()
-      .catch((e) => {
-        setDebug(e.message);
-      });
+    await avatar.current.interrupt().catch((e) => {
+      setDebug(e.message);
+    });
   }
   async function endSession() {
     await avatar.current?.stopAvatar();
@@ -261,9 +294,7 @@ export default function InteractiveAvatar() {
                   }}
                 >
                   {STT_LANGUAGE_LIST.map((lang) => (
-                    <SelectItem key={lang.key}>
-                      {lang.label}
-                    </SelectItem>
+                    <SelectItem key={lang.key}>{lang.label}</SelectItem>
                   ))}
                 </Select>
               </div>
@@ -302,6 +333,15 @@ export default function InteractiveAvatar() {
                 placeholder="Type something for the avatar to respond"
                 setInput={setText}
                 onSubmit={handleSpeak}
+              />
+              <InteractiveAvatarTextInput
+                disabled={!stream}
+                input={gtpInput}
+                label="Chat"
+                loading={isLoadingRepeat}
+                placeholder="Type something for the avatar to respond (using ChatGPT)"
+                setInput={setGptInput}
+                onSubmit={handleGptSubmit}
               />
               {text && (
                 <Chip className="absolute right-16 top-3">Listening</Chip>
