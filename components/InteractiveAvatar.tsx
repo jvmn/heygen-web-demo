@@ -46,24 +46,28 @@ export default function InteractiveAvatar() {
   const [isUserTalking, setIsUserTalking] = useState(false);
 
   const {
-    input: gtpInput,
+    input: gptInput,
     setInput: setGptInput,
     handleSubmit: handleGptSubmit,
   } = useChat({
+    streamProtocol: "text",
     onFinish: async (message) => {
-      // eslint-disable-next-line no-console
-      console.log("ChatGPT Response:", message);
-
       if (!avatar.current) {
         setDebug("Avatar API not initialized");
 
         return;
       }
 
-      //send the ChatGPT response to the Interactive Avatar
-      await avatar.current.speak({ text: message.content }).catch((e) => {
-        setDebug(e.message);
-      });
+      // Send the ChatGPT response to the Interactive Avatar
+      await avatar.current
+        .speak({
+          text: message.content,
+          taskType: TaskType.REPEAT,
+          taskMode: TaskMode.SYNC,
+        })
+        .catch((e) => {
+          setDebug(e.message);
+        });
     },
     initialMessages: [
       {
@@ -80,8 +84,6 @@ export default function InteractiveAvatar() {
         method: "POST",
       });
       const token = await response.text();
-
-      console.log("Access Token:", token); // Log the token to verify
 
       return token;
     } catch (error) {
@@ -336,7 +338,7 @@ export default function InteractiveAvatar() {
               />
               <InteractiveAvatarTextInput
                 disabled={!stream}
-                input={gtpInput}
+                input={gptInput}
                 label="Chat"
                 loading={isLoadingRepeat}
                 placeholder="Type something for the avatar to respond (using ChatGPT)"
